@@ -1,9 +1,20 @@
+#!/usr/bin/env python
+
+import MySQLdb
 import time
 import argparse
 import sys
 import json
 import Adafruit_BMP.BMP085 as BMP085
+
+from subprocess import call
+
+db = MySQLdb.connect("localhost", "root", "panda", "1906630_ece4899")
+curs=db.cursor()
  
+CurrTime = time.strftime("%m/%d/%y %H:%M:%S") 
+
+
 def read(basename, sensor, freq, stype, senml):
     while True:
         ts = int(time.mktime(time.gmtime()))
@@ -34,10 +45,11 @@ def read(basename, sensor, freq, stype, senml):
                 else:
                     print "%0.2f" % slpres
             else:
-                temp = sensor.read_temperature()
+                temp = "%0.2f" % sensor.read_temperature()
+				#myTemp = "%0.2f" % (temp)
                 pres = sensor.read_pressure()
                 alt = sensor.read_altitude()
-                slpres = sensor.read_sealevel_pressure()
+                slpres = sensor.read_sealevel_pressure()			
                 if senml:
                     print json.dumps({"bn": basename, "bt": ts, "e": [
                         {"n": "temperature", "v": temp, "u": "degC"},
@@ -46,8 +58,21 @@ def read(basename, sensor, freq, stype, senml):
                         {"n": "sealevel_pressure", "v": slpres, "u": "Pa"},
                         ]})
                 else:
-                    print "%0.2f %0.2f %0.2f %0.2f" % (temp, pres, alt, slpres)
-
+				    
+					#print CurrTime + temp
+                    #print "%0.2f %0.2f %0.2f %0.2f" % (temp, pres, alt, slpres) 
+					#call(["sudo", "cp", "test2.txt", "/var/www/html/test2.txt"])										
+					#print (time.strftime("%m/%d/%y %H:%M:%S")) + "," + "%0.2f" % (temp)									
+					#with open("/var/www/html/python/test2.txt", "a") as myfile:
+					#	myfile.write((time.strftime("%m/%d/%y %H:%M:%S")) + "," + "%0.2f" % (temp) + "\n")
+					try:						
+						curs.execute ("""INSERT INTO bmp180 ( category,D1 ) VALUES(%s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp) )
+						db.commit()
+						print "Data committed"		
+					except:
+						print "Error: the database is being rolled back"
+						db.rollback()
+						
             sys.stdout.flush()
         except:
             pass
@@ -70,7 +95,7 @@ if __name__ == "__main__":
     if args.freq <= 0:
         print "freq should be >= 0"
         sys.exit(1)
-    freq = args.freq / 1000.0
+    freq = args.freq / 8.3  #print every 2 minutes
 
     if args.json and args.basename is None:
         print "basename must be provided if JSON is enabled"

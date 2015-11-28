@@ -47,7 +47,7 @@ def read(basename, sensor, freq, stype, senml):
             else:
                 temp = "%0.2f" % sensor.read_temperature()
 				#myTemp = "%0.2f" % (temp)
-                pres = sensor.read_pressure()
+                pres = "%0.2f" % sensor.read_pressure()
                 alt = sensor.read_altitude()
                 slpres = sensor.read_sealevel_pressure()			
                 if senml:
@@ -67,6 +67,7 @@ def read(basename, sensor, freq, stype, senml):
 					#	myfile.write((time.strftime("%m/%d/%y %H:%M:%S")) + "," + "%0.2f" % (temp) + "\n")
 					try:						
 						curs.execute ("""INSERT INTO bmp180 ( category,D1 ) VALUES(%s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp) )
+						curs.execute ("""INSERT INTO pressure ( category,D1 ) VALUES(%s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), pres) )
 						db.commit()
 						print "Data committed"		
 					except:

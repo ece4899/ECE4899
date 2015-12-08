@@ -43,13 +43,18 @@ def ADC(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, C
 			while True:
 				test = 0
 				time.sleep(.25)               # sound must last .25 seconds
-				dB = adc.readADCSingleEnded(2, 6144, 475) / 2       # Sound converted to DB
-				if 150 > dB > 50:				                     # Record loud burst                       
-					if dB > 100:                                     # Adjust for large dB     
-						dB = dB/3
-					curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, pres, shumid, dB, tslight, CO ) )	
-					db.commit()
-					print "Noise"
+				dB = adc.readADCSingleEnded(2, 6144, 475) / 10       # Sound in volts*100
+				#if 150 > dB > 50:				                     # Record loud burst                       
+				if dB > 50.00:                                       # Adjust for large dB     
+					if dB > 150.00:
+						dB = 150.00                                  # make graph easier to read
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, pres, shumid, dB, tslight, CO ) )	
+						db.commit()
+						print "Excessive Noise"
+					else:
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, pres, shumid, dB, tslight, CO ) )	
+						db.commit()
+						print "Noise"
 				if test == 5:                # delay
 					break
 				test = test - 1
@@ -102,8 +107,9 @@ def read(basename, sensor, freq, stype, senml):
                         ]})
                 else:				    
 					try:
-						dB = adc.readADCSingleEnded(2, 6144, 475) / 2       # Sound converted to DB
-						CO = adc.readADCSingleEnded(3, 6144, 475) / 1000	# VOC						
+						#dB = adc.readADCSingleEnded(2, 6144, 475) / 2       # Sound converted to DB
+						dB = adc.readADCSingleEnded(2, 6144, 475) / 10       # Sound in volts*100 to see on graph
+						CO = adc.readADCSingleEnded(3, 6144, 475) / 1000	 # VOC						
 						#	CO = adc.getLastConversionResults()/200
 						#else:
 						#	CO = adc.getLastConversionResults()/1000

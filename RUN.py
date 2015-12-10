@@ -35,11 +35,12 @@ adc = ADS1x15(ic=ADS1115)
 # start comparator on channel 2 with a thresholdHigh=200mV and low=100mV
 # in traditional mode, non-latching, +/-1.024V and 250sps
 #adc.startSingleEndedComparator(2, 200, 100, pga=1024, sps=250, activeLow=True, traditionalMode=True, latching=False, numReadings=1)
+global count
 
 # Sound Interrupt
-def ADC(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO):
+def ADC(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO, count):	
 	try:
-		with timeout(60*5, exception=RuntimeError): #delay = 5 Min
+		with timeout(60*.01, exception=RuntimeError): #delay = 5 Min
 			while True:
 				test = 0
 				time.sleep(.25)               # sound must last .25 seconds
@@ -48,22 +49,89 @@ def ADC(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, C
 				if dB > 50.00:                                       # Adjust for large dB     
 					if dB > 150.00:
 						dB = 150.00                                  # make graph easier to read
-						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, pres, shumid, dB, tslight, CO ) )	
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", dB, "null", "null" ) )	
 						db.commit()
 						print "Excessive Noise"
 					else:
-						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, pres, shumid, dB, tslight, CO ) )	
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", dB, "null", "null" ) )	
 						db.commit()
 						print "Noise"
-				if test == 5:                # delay
-					break
+				if test == .01:                # delay
+					break					
+				test = test - 1
+	except RuntimeError:		
+		pass
+
+# temp Interrupt
+def Temp(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO, count):    
+	try:
+		with timeout(60*.5, exception=RuntimeError): #delay = 5 Min
+			while True:
+				tsl = TSL2561()
+				tslight = round(tsl.readLux(), 2)
+				temp = "%0.2f" % ((sensor.read_temperature()*(1.8))+32)
+				test = 0
+				time.sleep(.25)               # sound must last .25 seconds
+				dB = adc.readADCSingleEnded(2, 6144, 475) / 10       # Sound in volts*100
+				#if 150 > dB > 50:				                     # Record loud burst                       
+				if dB > 50.00:                                       # Adjust for large dB     
+					if dB > 150.00:
+						dB = 150.00                                  # make graph easier to read
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", dB, "null", "null" ) )	
+						db.commit()
+						print "Excessive Noise"
+					else:
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", dB, "null", "null" ) )	
+						db.commit()
+						print "Noise"
+				if test == .5:                # delay
+					break				
 				test = test - 1
 	except RuntimeError:
+		count = count + 1
+	if count < 5:
+		curs.execute ("""INSERT INTO all_graphs ( category, temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", "null", tslight, "null",  ) )
+		curs.execute ("""INSERT INTO all_graphs ( category, temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, "null", "null", "null", "null", "null",  ) )		
+		db.commit()
+		print "Temp/Light", count		
+		Light(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO, count)			
+	ADC(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO, count)	
+	pass
+		
+# Light Interrupt
+def Light(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO, count):        
+	try:		
+		with timeout(60*.5, exception=RuntimeError): #delay = 5 Min
+			while True:
+				tsl = TSL2561()
+				tslight = round(tsl.readLux(), 2)
+				test = 0
+				time.sleep(.25)               # sound must last .25 seconds
+				dB = adc.readADCSingleEnded(2, 6144, 475) / 10       # Sound in volts*100
+				#if 150 > dB > 50:				                     # Record loud burst                       
+				if dB > 50.00:                                       # Adjust for large dB     
+					if dB > 150.00:
+						dB = 150.00                                  # make graph easier to read
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", dB, "null", "null" ) )	
+						db.commit()
+						print "Excessive Noise"
+					else:
+						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", dB, "null", "null" ) )	
+						db.commit()
+						print "Noise"
+				if test == .5:                # delay
+					break				
+				test = test - 1
+	except RuntimeError:
+		curs.execute ("""INSERT INTO all_graphs ( category, temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), "null", "null", "null", "null", tslight, "null",  ) )		
+		db.commit()
+		print "Light"
+		Temp(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO, count)			
 		pass
 
 		
 # Rest of sensors
-def read(basename, sensor, freq, stype, senml):
+def read(basename, sensor, freq, stype, senml):    
     while True:
         ts = int(time.mktime(time.gmtime()))
 
@@ -110,14 +178,11 @@ def read(basename, sensor, freq, stype, senml):
 						#dB = adc.readADCSingleEnded(2, 6144, 475) / 2       # Sound converted to DB
 						dB = adc.readADCSingleEnded(2, 6144, 475) / 10       # Sound in volts*100 to see on graph
 						CO = adc.readADCSingleEnded(3, 6144, 475) / 1000	 # VOC						
-						#	CO = adc.getLastConversionResults()/200
-						#else:
-						#	CO = adc.getLastConversionResults()/1000
+						count = 0
 						tslight = round(tsl.readLux(), 2)
 						#airvolts = adc.readADCSingleEnded(0, gain, sps) / 1000
-						#print "Air Quality:", CO, "ppm"
-						#print adc.getLastConversionResults()/7.5,
-						curs.execute ("""INSERT INTO all_graphs ( category,temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, pres, shumid, dB, tslight, CO ) )					
+						#print "Air Quality:", CO, "ppm"						
+						curs.execute ("""INSERT INTO all_graphs ( category, temp, pres, shumid, adc, tslight, CO ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp, pres, shumid, dB, tslight, CO, ) )
 						db.commit()
 						print "Data committed"						
 					except:
@@ -128,7 +193,7 @@ def read(basename, sensor, freq, stype, senml):
         except:
             pass
         time.sleep(freq)
-	ADC(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO)  # call the sound
+	Light(basename, sensor, freq, stype, senml, temp, pres, shumid, tslight, dB, CO, count)  # call the sound
 
 def setup():
     return BMP085.BMP085()

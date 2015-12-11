@@ -1,3 +1,10 @@
+"""
+Author: David Kalina
+
+For senior seminar PANDa logger project ECE4899 12/11/15
+
+University of Colorado Colorado Springs
+"""
 #!/usr/bin/env python
 
 import MySQLdb
@@ -8,12 +15,12 @@ import json
 import Adafruit_BMP.BMP085 as BMP085
 
 from subprocess import call
+from decimal import Decimal
 
 db = MySQLdb.connect("localhost", "root", "panda", "1906630_ece4899")
 curs=db.cursor()
  
 CurrTime = time.strftime("%m/%d/%y %H:%M:%S") 
-
 
 def read(basename, sensor, freq, stype, senml):
     while True:
@@ -44,8 +51,8 @@ def read(basename, sensor, freq, stype, senml):
                     print json.dumps({"bt": ts, "e": [{"n": basename + "sealevel_pressure", "v": slpres, "u": "Pa"}]})
                 else:
                     print "%0.2f" % slpres
-            else:
-                temp = "%0.2f" % sensor.read_temperature()
+            else:			    
+                temp = "%0.2f" % ((sensor.read_temperature()*(1.8))+32)
 				#myTemp = "%0.2f" % (temp)
                 pres = "%0.2f" % sensor.read_pressure()
                 alt = sensor.read_altitude()
@@ -66,8 +73,9 @@ def read(basename, sensor, freq, stype, senml):
 					#with open("/var/www/html/python/test2.txt", "a") as myfile:
 					#	myfile.write((time.strftime("%m/%d/%y %H:%M:%S")) + "," + "%0.2f" % (temp) + "\n")
 					try:						
-						curs.execute ("""INSERT INTO bmp180 ( category,D1 ) VALUES(%s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp) )
+						curs.execute ("""INSERT INTO bmp180 ( category,D1 ) VALUES(%s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), temp ) )
 						curs.execute ("""INSERT INTO pressure ( category,D1 ) VALUES(%s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), pres) )
+						#curs.execute ("""INSERT INTO TEST ( category,D1 ) VALUES(%s, %s)""",(time.strftime("%m/%d/%y %H:%M:%S"), pres) )
 						db.commit()
 						print "Data committed"		
 					except:
@@ -97,7 +105,7 @@ if __name__ == "__main__":
         print "freq should be >= 0"
         sys.exit(1)
     freq = args.freq / 8.3  #print every 2 minutes
-
+	
     if args.json and args.basename is None:
         print "basename must be provided if JSON is enabled"
         sys.exit(1)

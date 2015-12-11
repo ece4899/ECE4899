@@ -1,3 +1,10 @@
+"""
+Author: David Kalina
+
+For senior seminar PANDa logger project ECE4899 12/11/15
+
+University of Colorado Colorado Springs
+"""
 #!/usr/bin/env python
 
 import MySQLdb

@@ -1,3 +1,10 @@
+"""
+Author: Paul Schow
+
+For senior seminar PANDa logger project ECE4899 12/11/15
+
+University of Colorado Colorado Springs
+"""
 #!/usr/bin/python
 
 from Adafruit_MCP230xx import Adafruit_MCP230XX
